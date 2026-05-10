@@ -7,23 +7,34 @@ import ScoreDisplay from '@/components/ScoreDisplay';
 import { getSessionId } from '@/lib/session';
 
 const PUZZLES = [
-  { id: 'en-easy-1', label: 'Simple English', emoji: '🇬🇧', diff: 'Easy', color: '#22c55e', desc: '7×7 grid · Everyday vocabulary' },
-  { id: 'en-hard-1', label: 'Advanced English', emoji: '🇬🇧', diff: 'Hard', color: '#e94560', desc: '9×9 grid · Challenging words' },
-  { id: 'de-easy-1', label: 'Einfaches Deutsch', emoji: '🇩🇪', diff: 'Einfach', color: '#22c55e', desc: '7×7 Raster · Alltägliche Wörter' },
-  { id: 'de-hard-1', label: 'Fortgeschrittenes Deutsch', emoji: '🇩🇪', diff: 'Schwer', color: '#e94560', desc: '11×11 Raster · Anspruchsvolle Wörter' },
+  { id: 'en-easy-1', label: 'Simple English', flag: '🇬🇧', diff: 'Easy',     diffDe: 'Easy',     color: '#22c55e', desc: '7×7 · Everyday words',        pts: '50–100' },
+  { id: 'en-hard-1', label: 'Advanced English', flag: '🇬🇧', diff: 'Hard',   diffDe: 'Hard',    color: '#e94560', desc: '9×9 · Challenging vocab',      pts: '150–300' },
+  { id: 'de-easy-1', label: 'Einfaches Deutsch', flag: '🇩🇪', diff: 'Einfach', diffDe: 'Einfach', color: '#22c55e', desc: '7×7 · Alltägliche Wörter',    pts: '50–100' },
+  { id: 'de-hard-1', label: 'Fortgeschrittenes Deutsch', flag: '🇩🇪', diff: 'Schwer', diffDe: 'Schwer', color: '#e94560', desc: '11×11 · Anspruchsvoll', pts: '150–300' },
 ];
+
+type Filter = 'all' | 'en' | 'de';
 
 export default function HomePage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]   = useState(true);
+  const [visible, setVisible]   = useState(false);
   const [progress, setProgress] = useState({ totalPoints: 0, level: 1, completedPuzzles: [] as string[] });
-  const [filter, setFilter] = useState<'all' | 'en' | 'de'>('all');
+  const [filter, setFilter]     = useState<Filter>('all');
 
   useEffect(() => {
     const sid = getSessionId();
     fetch(`/api/progress?sessionId=${sid}`)
       .then(r => r.json())
-      .then(d => { if (d && !d.error) setProgress({ totalPoints: d.total_points ?? 0, level: d.level ?? 1, completedPuzzles: d.completed_puzzles ?? [] }); })
+      .then(d => {
+        if (d && !d.error) {
+          setProgress({
+            totalPoints: d.total_points ?? 0,
+            level: d.level ?? 1,
+            completedPuzzles: d.completed_puzzles ?? [],
+          });
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -31,89 +42,105 @@ export default function HomePage() {
 
   return (
     <>
-      {loading && <LoadingScreen onDone={() => setLoading(false)} />}
-      <div className="relative min-h-screen flex flex-col" style={{ opacity: loading ? 0 : 1, transition: 'opacity 0.5s' }}>
+      {loading && <LoadingScreen onDone={() => { setLoading(false); setTimeout(() => setVisible(true), 50); }} />}
+
+      <div className="relative flex flex-col" style={{
+        minHeight: '100dvh',
+        opacity: visible ? 1 : 0,
+        transition: 'opacity 0.4s ease',
+        paddingTop: 'var(--safe-top)',
+        paddingBottom: 'var(--safe-bottom)',
+      }}>
         <StarsBg />
-        <div className="relative z-10 flex flex-col min-h-screen">
-          {/* Header */}
-          <header className="flex items-center justify-between px-6 py-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl"
+
+        <div className="relative z-10 flex flex-col" style={{ minHeight: '100dvh' }}>
+          {/* ── Header ── */}
+          <header className="flex items-center justify-between px-4 py-3 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl shrink-0"
                 style={{ background: 'linear-gradient(135deg, #e94560, #f5a623)' }}>
                 ✦
               </div>
               <div>
-                <h1 className="text-xl font-black tracking-wide gradient-text">CrossWord Universe</h1>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>English & Deutsch</p>
+                <h1 className="text-base font-black tracking-wide leading-none gradient-text">CrossWord Universe</h1>
+                <p className="text-xs mt-0.5 leading-none" style={{ color: 'var(--text-muted)' }}>English &amp; Deutsch</p>
               </div>
+            </div>
+            {/* Total points pill */}
+            <div className="px-3 py-1.5 rounded-full flex items-center gap-1.5"
+              style={{ background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)' }}>
+              <span className="text-sm">⭐</span>
+              <span className="text-sm font-black" style={{ color: 'var(--gold)' }}>{progress.totalPoints}</span>
             </div>
           </header>
 
-          <main className="flex-1 flex flex-col items-center px-4 pb-10">
-            {/* Score */}
-            <div className="w-full max-w-2xl mb-8 fade-in-up">
-              <ScoreDisplay points={progress.totalPoints} level={progress.level} completed={progress.completedPuzzles.length} />
+          <main className="flex-1 flex flex-col px-4 pb-6 gap-5 overflow-y-auto">
+            {/* Score bar */}
+            <div className="fade-in-up">
+              <ScoreDisplay
+                points={progress.totalPoints}
+                level={progress.level}
+                completed={progress.completedPuzzles.length}
+              />
             </div>
 
             {/* Hero */}
-            <div className="text-center mb-10 fade-in-up" style={{ animationDelay: '0.1s' }}>
-              <div className="float-anim inline-block text-7xl mb-4">🧩</div>
-              <h2 className="text-4xl font-black mb-3 gradient-text">Choose Your Challenge</h2>
-              <p className="text-lg max-w-md mx-auto" style={{ color: 'var(--text-muted)' }}>
-                Train your mind with crossword puzzles in English and German. Earn points, level up!
+            <div className="text-center fade-in-up" style={{ animationDelay: '0.08s' }}>
+              <div className="float-anim inline-block text-5xl sm:text-6xl mb-3">🧩</div>
+              <h2 className="text-2xl sm:text-3xl font-black gradient-text mb-1.5">Choose Your Challenge</h2>
+              <p className="text-sm leading-relaxed max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>
+                Train your brain with crossword puzzles. Earn points &amp; level up!
               </p>
             </div>
 
             {/* Language filter */}
-            <div className="flex gap-3 mb-8 fade-in-up" style={{ animationDelay: '0.2s' }}>
-              {(['all', 'en', 'de'] as const).map(f => (
+            <div className="flex gap-2 justify-center fade-in-up" style={{ animationDelay: '0.15s' }}>
+              {(['all','en','de'] as Filter[]).map(f => (
                 <button key={f} onClick={() => setFilter(f)}
-                  className="px-5 py-2 rounded-full font-semibold text-sm transition-all duration-200"
+                  className="px-4 py-2 rounded-full font-semibold text-sm transition-all duration-200 min-h-[40px]"
                   style={{
-                    background: filter === f ? 'linear-gradient(135deg, #e94560, #f5a623)' : 'rgba(42,42,74,0.6)',
+                    background: filter === f ? 'linear-gradient(135deg,#e94560,#f5a623)' : 'rgba(42,42,74,0.7)',
                     color: filter === f ? 'white' : 'var(--text-muted)',
                     border: filter === f ? 'none' : '1px solid var(--border)',
-                    boxShadow: filter === f ? '0 4px 15px rgba(233,69,96,0.3)' : 'none',
+                    boxShadow: filter === f ? '0 4px 14px rgba(233,69,96,0.3)' : 'none',
                   }}>
-                  {f === 'all' ? '🌍 All' : f === 'en' ? '🇬🇧 English' : '🇩🇪 Deutsch'}
+                  {f === 'all' ? '🌍 All' : f === 'en' ? '🇬🇧 EN' : '🇩🇪 DE'}
                 </button>
               ))}
             </div>
 
-            {/* Puzzle cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full max-w-2xl">
+            {/* Puzzle grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {filtered.map((p, i) => {
                 const done = progress.completedPuzzles.includes(p.id);
                 return (
-                  <button key={p.id} onClick={() => router.push(`/game/${p.id}`)}
-                    className="card-glass rounded-2xl p-6 text-left group hover:scale-105 transition-all duration-300 fade-in-up"
-                    style={{ animationDelay: `${0.1 * i + 0.3}s`, boxShadow: done ? '0 0 20px rgba(34,197,94,0.2)' : 'none' }}>
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-3xl">{p.emoji}</span>
+                  <button key={p.id}
+                    onClick={() => router.push(`/game/${p.id}`)}
+                    className="card-glass rounded-2xl p-4 text-left fade-in-up active:scale-95 transition-transform duration-150"
+                    style={{
+                      animationDelay: `${0.08 * i + 0.2}s`,
+                      boxShadow: done ? '0 0 18px rgba(34,197,94,0.18)' : 'none',
+                    }}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-2xl">{p.flag}</span>
                         <div>
-                          <h3 className="font-bold text-base leading-tight">{p.label}</h3>
-                          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{p.desc}</p>
+                          <div className="font-bold text-sm leading-tight">{p.label}</div>
+                          <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{p.desc}</div>
                         </div>
                       </div>
-                      {done && <span className="text-xl">✅</span>}
+                      {done && <span className="text-lg">✅</span>}
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="px-3 py-1 rounded-full text-xs font-bold"
-                        style={{ background: `${p.color}22`, color: p.color, border: `1px solid ${p.color}44` }}>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold"
+                        style={{ background: `${p.color}20`, color: p.color, border: `1px solid ${p.color}40` }}>
                         {p.diff}
                       </span>
-                      <span className="text-sm font-semibold group-hover:translate-x-1 transition-transform"
-                        style={{ color: '#e94560' }}>
-                        Play →
-                      </span>
-                    </div>
-                    {/* Points badge */}
-                    <div className="mt-3 pt-3 border-t flex items-center gap-2" style={{ borderColor: 'var(--border)' }}>
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Reward:</span>
-                      <span className="text-xs font-bold" style={{ color: 'var(--gold)' }}>
-                        {p.diff === 'Easy' || p.diff === 'Einfach' ? '50–100' : '150–300'} pts
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Reward:</span>
+                        <span className="text-xs font-bold" style={{ color: 'var(--gold)' }}>{p.pts} pts</span>
+                        <span className="text-xs font-bold" style={{ color: 'var(--accent)' }}>→</span>
+                      </div>
                     </div>
                   </button>
                 );
@@ -121,18 +148,18 @@ export default function HomePage() {
             </div>
 
             {/* How to play */}
-            <div className="mt-10 w-full max-w-2xl card-glass rounded-2xl p-6 fade-in-up" style={{ animationDelay: '0.6s' }}>
-              <h3 className="font-bold text-lg mb-4 gradient-text">How to Play</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="card-glass rounded-2xl p-4 fade-in-up" style={{ animationDelay: '0.45s' }}>
+              <h3 className="font-bold text-sm mb-3 gradient-text uppercase tracking-wider">How to Play</h3>
+              <div className="grid grid-cols-3 gap-2 text-center">
                 {[
-                  { icon: '👆', title: 'Select a Cell', desc: 'Click or tap any white cell to select it' },
-                  { icon: '⌨️', title: 'Type Your Answer', desc: 'Use keyboard or on-screen input to fill in letters' },
-                  { icon: '⭐', title: 'Earn Points', desc: 'Complete words and puzzles to earn points and level up' },
+                  { icon: '👆', t: 'Select', d: 'Tap a white cell' },
+                  { icon: '⌨️', t: 'Type', d: 'Enter your answer' },
+                  { icon: '⭐', t: 'Score', d: 'Earn points & level up' },
                 ].map(h => (
-                  <div key={h.title} className="text-center p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                    <div className="text-3xl mb-2">{h.icon}</div>
-                    <div className="font-semibold text-sm mb-1">{h.title}</div>
-                    <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{h.desc}</div>
+                  <div key={h.t} className="p-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                    <div className="text-2xl mb-1">{h.icon}</div>
+                    <div className="font-semibold text-xs mb-0.5">{h.t}</div>
+                    <div className="text-xs leading-tight" style={{ color: 'var(--text-muted)' }}>{h.d}</div>
                   </div>
                 ))}
               </div>
