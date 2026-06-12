@@ -1,9 +1,9 @@
-const CACHE = 'crossword-v1';
-const OFFLINE_URLS = ['/', '/offline'];
+const CACHE = 'crossword-v2';
+const PRECACHE_URLS = ['/'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(OFFLINE_URLS)).then(() => self.skipWaiting())
+    caches.open(CACHE).then(c => c.addAll(PRECACHE_URLS)).then(() => self.skipWaiting())
   );
 });
 
@@ -18,12 +18,15 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  // Network-first for API, cache-first for assets
+  if (url.origin !== location.origin) return;
+
   if (url.pathname.startsWith('/api/')) {
+    // Network-only for API; report offline as JSON
     e.respondWith(
       fetch(e.request).catch(() => new Response(JSON.stringify({ error: 'offline' }), { headers: { 'Content-Type': 'application/json' } }))
     );
-  } else {
+  } else if (url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/icons/')) {
+    // Immutable build assets: cache-first
     e.respondWith(
       caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
         if (res.ok) {
@@ -32,6 +35,20 @@ self.addEventListener('fetch', e => {
         }
         return res;
       }))
+    );
+  } else {
+    // Pages and everything else: network-first so new deploys are picked up,
+    // falling back to cache only when offline
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res.ok && e.request.mode === 'navigate') {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() =>
+        caches.match(e.request).then(cached => cached || caches.match('/'))
+      )
     );
   }
 });

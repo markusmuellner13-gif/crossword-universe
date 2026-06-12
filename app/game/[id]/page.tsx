@@ -36,7 +36,14 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
     setTotalPoints(data.totalPoints);
     setLevel(data.level);
     if (data.activePuzzleId === id && data.activePuzzleState) {
-      setUserLetters(data.activePuzzleState);
+      // Discard saved letters that don't map onto this grid (e.g. progress
+      // saved before a puzzle layout changed) so stale state can't corrupt play
+      const valid = Object.entries(data.activePuzzleState).every(([k]) => {
+        const [r, c] = k.split(',').map(Number);
+        const cell = puzzle.grid[r]?.[c];
+        return !!cell && !cell.isBlack;
+      });
+      if (valid) setUserLetters(data.activePuzzleState);
     }
   }, [id, puzzle]);
 

@@ -105,15 +105,21 @@ export default function CrosswordGrid({
     }
   };
 
-  // Responsive cell size: fill available width, cap at 52px
-  const maxGridWidth = typeof window !== 'undefined'
-    ? Math.min(window.innerWidth - 48, 480)
-    : 480;
-  const cellSize = Math.max(28, Math.floor((maxGridWidth - puzzle.size * 2) / puzzle.size));
-  const capCellSize = Math.min(cellSize, 52);
+  // Responsive cell size: fill available width, readable even on 15×15 grids.
+  // Computed in an effect (not at render) so server and client HTML match.
+  const [maxGridWidth, setMaxGridWidth] = useState(480);
+  useEffect(() => {
+    const update = () => setMaxGridWidth(Math.min(window.innerWidth - 40, 620));
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+  const cellSize = Math.max(21, Math.floor((maxGridWidth - puzzle.size * 2) / puzzle.size));
+  const capCellSize = Math.min(cellSize, 46);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${puzzle.size}, ${capCellSize}px)`, gap: '2px', touchAction: 'none' }}>
+    <div style={{ maxWidth: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${puzzle.size}, ${capCellSize}px)`, gap: '2px', touchAction: 'none', width: 'max-content', margin: '0 auto' }}>
       {puzzle.grid.flat().map(cell => {
         const k = key(cell.row, cell.col);
         const userL = userLetters[k] ?? '';
@@ -142,8 +148,8 @@ export default function CrosswordGrid({
         if (isWrong   && !isSel) { bg = 'rgba(127,29,29,0.7)'; border = '1px solid rgba(239,68,68,0.4)'; color = '#fca5a5'; }
         if (isRevealed && !isSel){ bg = 'rgba(92,50,0,0.8)'; border = '1px solid rgba(245,166,35,0.4)'; color = '#fcd34d'; }
 
-        const numSize = Math.max(7, capCellSize * 0.22);
-        const letterSize = Math.max(14, capCellSize * 0.42);
+        const numSize = Math.max(7, Math.round(capCellSize * 0.24));
+        const letterSize = Math.max(12, Math.round(capCellSize * 0.46));
 
         return (
           <div key={k}
@@ -183,6 +189,7 @@ export default function CrosswordGrid({
           </div>
         );
       })}
+    </div>
     </div>
   );
 }

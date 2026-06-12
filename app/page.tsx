@@ -5,13 +5,22 @@ import LoadingScreen from '@/components/LoadingScreen';
 import StarsBg from '@/components/StarsBg';
 import ScoreDisplay from '@/components/ScoreDisplay';
 import { loadProgress } from '@/lib/storage';
+import { getPuzzleList } from '@/lib/puzzles';
 
-const PUZZLES = [
-  { id: 'en-easy-1', label: 'Simple English',             flag: '🇬🇧', diff: 'Easy',    color: '#22c55e', desc: '7×7 · Everyday words',       pts: '50–100' },
-  { id: 'en-hard-1', label: 'Advanced English',           flag: '🇬🇧', diff: 'Hard',    color: '#e94560', desc: '9×9 · Challenging vocab',     pts: '150–300' },
-  { id: 'de-easy-1', label: 'Einfaches Deutsch',          flag: '🇩🇪', diff: 'Einfach', color: '#22c55e', desc: '7×7 · Alltägliche Wörter',   pts: '50–100' },
-  { id: 'de-hard-1', label: 'Fortgeschrittenes Deutsch',  flag: '🇩🇪', diff: 'Schwer',  color: '#e94560', desc: '11×11 · Anspruchsvoll',       pts: '150–300' },
-];
+const PUZZLES = getPuzzleList().map(p => {
+  const isDE = p.language === 'de';
+  const perWord = p.difficulty === 'easy' ? 10 : 20;
+  const bonus = p.difficulty === 'easy' ? 50 : 150;
+  return {
+    id: p.id,
+    label: p.title,
+    flag: isDE ? '🇩🇪' : '🇬🇧',
+    diff: p.difficulty === 'easy' ? (isDE ? 'Einfach' : 'Easy') : (isDE ? 'Schwer' : 'Hard'),
+    color: p.difficulty === 'easy' ? '#22c55e' : '#e94560',
+    desc: `${p.size}×${p.size} · ${p.words} ${isDE ? 'Wörter' : 'words'}`,
+    pts: `${p.words * perWord + bonus}`,
+  };
+});
 
 type Filter = 'all' | 'en' | 'de';
 
@@ -107,7 +116,7 @@ export default function HomePage() {
                     onClick={() => router.push(`/game/${p.id}`)}
                     className="card-glass rounded-2xl p-4 text-left fade-in-up"
                     style={{
-                      animationDelay: `${0.08 * i + 0.2}s`,
+                      animationDelay: `${Math.min(0.06 * i, 0.5) + 0.2}s`,
                       transition: 'transform 0.15s',
                       boxShadow: done ? '0 0 18px rgba(34,197,94,0.18)' : 'none',
                     }}
